@@ -3,6 +3,8 @@ name: Deploy Santa AI Manager
 on:
   push:
     branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
 
 jobs:
   deploy:
