@@ -19,9 +19,14 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-
+          # 1. santa-ai-manager 폴더 내부의 모든 것을 대상으로 지정합니다.
           source: "santa-ai-manager/" 
-          target: "~/santa-ai-manager-temp"
+          # 2. EC2의 운영 폴더로 바로 보냅니다.
+          target: "~/santa-ai-manager"
+          # 3. 핵심: 'santa-ai-manager/'라는 부모 폴더명을 제거하고 내용물만 복사합니다.
+          strip_components: 1
+          # 4. 전송 전 기존 운영 폴더를 비워 찌꺼기 파일을 제거합니다.
+          rm: true
 
       - name: Execute remote commands
         uses: appleboy/ssh-action@master
@@ -30,23 +35,20 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            set -e # 에러 발생 시 즉시 중단하여 원인 파악 용이하게 설정
-            
-            # 1. 폴더 정리 및 이동
-            rm -rf ~/santa-ai-manager
-            mv ~/santa-ai-manager-temp ~/santa-ai-manager
+            set -e # 에러 발생 시 즉시 중단
+
+            # 이제 ~/santa-ai-manager 바로 아래에 docker-compose.yml이 있습니다.
             cd ~/santa-ai-manager
-
-            # 2. 환경 변수 파일 생성
+            
+            # 환경 변수 파일 생성
             echo "${{ secrets.DOT_ENV }}" > .env
-
-            # 3. 도커 실행 (명령어 순서 주의: up -d)
-            # 만약 docker compose가 안 되면 docker-compose로 시도하세요.
+            
+            # 도커 실행 (컴포즈 버전 호환성 체크)
             if docker compose version > /dev/null 2>&1; then
               docker compose up -d --build
             else
               docker-compose up -d --build
             fi
             
-            # 4. 정리
+            # 사용하지 않는 이미지 정리
             docker image prune -f
