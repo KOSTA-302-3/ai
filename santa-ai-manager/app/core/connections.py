@@ -6,6 +6,7 @@ import ssl
 pool = ConnectionPool(
     host=settings.REDIS_HOST,
     port=settings.REDIS_PORT,
+    password=settings.REDIS_PASSWORD,
     decode_responses=True,
     ssl=True,               
     ssl_cert_reqs=None,      
