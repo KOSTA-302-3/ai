@@ -20,9 +20,9 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: "santa-ai-manager/" 
-          target: "~/santa-ai-manager-new" # 1. 새로운 임시 폴더에 복사
+          target: "~/santa-ai-manager-new"
           strip_components: 1
-          rm: false # 2. rm 옵션 해제 (권한 에러 방지)
+          rm: false 
 
       - name: Execute remote commands
         uses: appleboy/ssh-action@master
@@ -32,17 +32,23 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             set -e
-            
-            # 3. sudo를 사용하여 기존 폴더를 안전하게 삭제 (권한 문제 해결)
-            if [ -d "~/santa-ai-manager" ]; then
-              sudo rm -rf ~/santa-ai-manager
+
+            TARGET_DIR="$HOME/santa-ai-manager"
+            TEMP_DIR="$HOME/santa-ai-manager-new"
+
+            if [ -d "$TARGET_DIR" ]; then
+              sudo rm -rf "$TARGET_DIR"
             fi
+
+            mv "$TEMP_DIR" "$TARGET_DIR"
+            cd "$TARGET_DIR"
             
-            # 4. 새로 받은 폴더를 운영 폴더로 이동
-            mv ~/santa-ai-manager-new ~/santa-ai-manager
-            cd ~/santa-ai-manager
-            
-            # 5. 환경 변수 설정 및 실행
             echo "${{ secrets.DOT_ENV }}" > .env
-            docker compose up -d --build
-            docker image prune -f
+
+            if sudo docker compose version > /dev/null 2>&1; then
+              sudo docker compose up --build -d
+            else
+              sudo docker-compose up --build -d
+            fi
+
+            sudo docker image prune -f
