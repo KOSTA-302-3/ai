@@ -5,23 +5,23 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # 1. Docker 이미지 빌드 및 GHCR 업로드
-      - name: Log in to GitHub Container Registry
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Copy files to EC2
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "." # 현재 폴더의 모든 파일
+          target: "~/santa-ai-manager" # EC2 내 대상 폴더
 
-      - name: Build and push Docker image
-        run: |
-          docker build -t ghcr.io/${{ github.repository }}/ai-manager:latest .
-          docker push ghcr.io/${{ github.repository }}/ai-manager:latest
-
-      # 2. EC2에 접속하여 배포 실행
-      - name: Deploy to EC2
+      # 3. SSH 접속 후 Docker 실행
+      - name: Execute remote commands
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -29,8 +29,9 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd ~/santa-ai-manager
+            # .env 파일 생성
             echo "${{ secrets.DOT_ENV }}" > .env
-            docker login ghcr.io -u ${{ github.actor }} --password-stdin <<< "${{ secrets.GITHUB_TOKEN }}"
-            docker-compose pull
+            # 도커 빌드 및 실행
             docker-compose up -d --build
-            docker image prune -f # 오래된 이미지 삭제
+            # 불필요한 이미지 정리
+            docker image prune -f
