@@ -7,7 +7,7 @@ from app.services.worker import start_worker
 app = FastAPI(title="Project Santa AI Manager")
 
 # API 경로 등록
-app.include_router(api_router, prefix="/internal")
+app.include_router(api_router)
 
 @app.on_event("startup")
 async def startup_event():
