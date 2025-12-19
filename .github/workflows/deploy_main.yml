@@ -30,20 +30,23 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            # 1. 기존 운영 폴더가 있다면 삭제 (깔끔한 재배포를 위해)
+            set -e # 에러 발생 시 즉시 중단하여 원인 파악 용이하게 설정
+            
+            # 1. 폴더 정리 및 이동
             rm -rf ~/santa-ai-manager
-            
-            # 2. 임시 폴더의 이름을 운영 폴더 이름으로 변경
-            # SCP가 파일들을 temp 폴더 안에 바로 풀었으므로 폴더 이름만 바꾸면 됩니다.
             mv ~/santa-ai-manager-temp ~/santa-ai-manager
-
             cd ~/santa-ai-manager
-            
-            # 3. 환경 변수 설정
+
+            # 2. 환경 변수 파일 생성
             echo "${{ secrets.DOT_ENV }}" > .env
+
+            # 3. 도커 실행 (명령어 순서 주의: up -d)
+            # 만약 docker compose가 안 되면 docker-compose로 시도하세요.
+            if docker compose version > /dev/null 2>&1; then
+              docker compose up -d --build
+            else
+              docker-compose up -d --build
+            fi
             
-            # 4. 도커 실행 (docker-compose 대신 최신인 docker compose 권장)
-            docker compose up -d --build
-            
-            # 5. 미사용 이미지 정리
+            # 4. 정리
             docker image prune -f
