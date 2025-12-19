@@ -42,13 +42,19 @@ jobs:
 
             mv "$TEMP_DIR" "$TARGET_DIR"
             cd "$TARGET_DIR"
-            
+
             echo "${{ secrets.DOT_ENV }}" > .env
 
             if sudo docker compose version > /dev/null 2>&1; then
-              sudo docker compose up --build -d
+              COMPOSE_CMD="sudo docker compose"
             else
-              sudo docker-compose up --build -d
+              COMPOSE_CMD="sudo docker-compose"
             fi
+
+            echo "Using command: $COMPOSE_CMD"
+
+            $COMPOSE_CMD down --remove-orphans || true
+
+            $COMPOSE_CMD up --build -d
 
             sudo docker image prune -f
