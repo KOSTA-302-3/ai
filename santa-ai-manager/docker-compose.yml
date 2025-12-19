@@ -1,0 +1,21 @@
+version: "3.8"
+
+services:
+  ai-manager:
+    build: .
+    container_name: santa-ai-manager
+    ports:
+      - "8000:8000"
+    env_file: .env
+    depends_on:
+      - qdrant
+    restart: always
+
+  qdrant:
+    image: qdrant/qdrant:latest # Qdrant는 외부 이미지를 그대로 사용
+    container_name: santa-qdrant
+    ports:
+      - "6333:6333"
+    volumes:
+      - ./qdrant_storage:/qdrant/storage
+    restart: always

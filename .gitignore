@@ -1,0 +1,49 @@
+# === [ Python / Virtual Environment ] ===
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+ENV/
+build/
+dist/
+*.egg-info/
+
+# === [ Environment Variables & Secrets ] ===
+# 보안을 위해 절대 커밋하면 안 됩니다.
+.env
+.env.*
+!.env.example  # 설정 가이드용 예시 파일은 허용
+
+# === [ Editors & IDEs ] ===
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# === [ Operating System (Windows/macOS) ] ===
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# === [ Project Specific: AI & Data ] ===
+# 대용량 모델 가중치 파일 (S3에서 로드하므로 제외)
+*.pth
+*.onnx
+*.weights
+models/siglip_best.pth 
+
+# Qdrant 로컬 데이터 저장소 (도커 볼륨 마운트 시 생성됨)
+qdrant_storage/
+
+# 로그 파일
+*.log
+logs/
+
+# === [ Jupyter Notebooks ] ===
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+
+# === [ Modal / Docker ] ===
+.modal/

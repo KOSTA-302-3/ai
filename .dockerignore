@@ -1,0 +1,38 @@
+# === [ Git & Metadata ] ===
+.git
+.gitignore
+.dockerignore
+LICENSE
+README.md
+
+# === [ Environment & Secrets ] ===
+# 중요: .env는 이미지에 구워지는 것보다 런타임에 주입받는 것이 안전합니다.
+.env
+.env.*
+
+# === [ Python & Cache ] ===
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# === [ Editors & Config ] ===
+.vscode/
+.idea/
+*.swp
+
+# === [ Heavy Data & Models ] ===
+# 모델 가중치는 Modal GPU나 S3에서 직접 처리하므로 제외합니다.
+*.pth
+*.onnx
+models/
+qdrant_storage/
+
+# === [ Production-unnecessary Scripts ] ===
+# 서버 가동에 필요 없는 로컬 테스트용 스크립트 제외
+test_connect.py
+push_job.py
+tests/
