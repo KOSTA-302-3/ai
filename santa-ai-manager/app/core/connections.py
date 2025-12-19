@@ -1,18 +1,13 @@
-from redis.asyncio import Redis, ConnectionPool
+from redis.asyncio import Redis
 from app.core.config import settings
-import ssl
 
-# 연결 풀 생성
-pool = ConnectionPool(
-    host=settings.REDIS_HOST,
-    port=settings.REDIS_PORT,
-    password=settings.REDIS_PASSWORD,
+if settings.REDIS_PASSWORD:
+    redis_url = f"rediss://:{settings.REDIS_PASSWORD}@{settings.REDIS_HOST}:{settings.REDIS_PORT}"
+else:
+    redis_url = f"rediss://{settings.REDIS_HOST}:{settings.REDIS_PORT}"
+
+redis_client = Redis.from_url(
+    redis_url,
     decode_responses=True,
-    ssl=True,               
-    ssl_cert_reqs=None,      
-    socket_timeout=5.0,       
-    socket_keepalive=True     
+    ssl_cert_reqs=None 
 )
-
-# 비동기 클라이언트 생성
-redis_client = Redis(connection_pool=pool)
