@@ -1,8 +1,7 @@
-# app/services/worker.py
 import asyncio
 import json
 import logging
-from app.core.config import settings # 설정 임포트
+from app.core.config import settings
 from app.core.connections import redis_client
 from app.services.modal_service import trigger_inference
 
