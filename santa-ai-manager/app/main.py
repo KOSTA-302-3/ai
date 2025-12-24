@@ -1,12 +1,10 @@
-# app/main.py (수정)
 from fastapi import FastAPI
 import asyncio
-from app.api.routes import router as api_router # 추가
+from app.api.routes import router as api_router
 from app.services.worker import start_worker
 
 app = FastAPI()
 
-# API 경로 등록
 app.include_router(api_router, prefix="/internal")
 
 @app.on_event("startup")
