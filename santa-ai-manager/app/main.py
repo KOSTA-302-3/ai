@@ -3,9 +3,10 @@ import asyncio
 from app.api.routes import router as api_router
 from app.services.worker import start_worker
 
-app = FastAPI()
+app = FastAPI(title="Project Santa AI Manager")
 
-app.include_router(api_router, prefix="/internal")
+# API 경로 등록
+app.include_router(api_router)
 
 @app.on_event("startup")
 async def startup_event():
