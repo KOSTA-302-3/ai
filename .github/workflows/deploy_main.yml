@@ -2,9 +2,7 @@ name: Deploy Santa AI Manager
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   deploy:
@@ -19,10 +17,10 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "santa-ai-manager/" 
+          source: "santa-ai-manager/"
           target: "~/santa-ai-manager-new"
           strip_components: 1
-          rm: false 
+          rm: false
 
       - name: Execute remote commands
         uses: appleboy/ssh-action@master
