@@ -21,6 +21,15 @@ class InferenceResult(BaseModel):
     unified_vector: list  
     status: str
 
+@router.get("/internal/test-redis")
+async def test_redis():
+    try:
+        # Redis에 ping을 날려 연결 확인
+        pong = await redis_client.ping()
+        return {"redis_status": "connected" if pong else "failed"}
+    except Exception as e:
+        return {"redis_status": "error", "detail": str(e)}
+
 @router.post("/inference-result")
 async def receive_result(result: InferenceResult, x_santa_token: str = Header(None)):
 
