@@ -2,9 +2,7 @@ name: Deploy Santa AI Manager
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   deploy:
@@ -20,7 +18,7 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           # 1. santa-ai-manager 폴더 내부의 모든 것을 대상으로 지정합니다.
-          source: "santa-ai-manager/" 
+          source: "santa-ai-manager/"
           # 2. EC2의 운영 폴더로 바로 보냅니다.
           target: "~/santa-ai-manager"
           # 3. 핵심: 'santa-ai-manager/'라는 부모 폴더명을 제거하고 내용물만 복사합니다.
@@ -39,16 +37,16 @@ jobs:
 
             # 이제 ~/santa-ai-manager 바로 아래에 docker-compose.yml이 있습니다.
             cd ~/santa-ai-manager
-            
+
             # 환경 변수 파일 생성
             echo "${{ secrets.DOT_ENV }}" > .env
-            
+
             # 도커 실행 (컴포즈 버전 호환성 체크)
             if docker compose version > /dev/null 2>&1; then
               docker compose up -d --build
             else
               docker-compose up -d --build
             fi
-            
+
             # 사용하지 않는 이미지 정리
             docker image prune -f
