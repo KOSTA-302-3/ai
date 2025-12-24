@@ -5,51 +5,71 @@ from app.core.connections import redis_client
 from app.core.config import settings
 import json
 import logging
+import uuid
 
 from qdrant_client import QdrantClient
-from qdrant_client.http.models import Distance, VectorParams
+from qdrant_client.http.models import Distance, VectorParams, PointStruct
 import os
+
+# [Database]
+from sqlalchemy.orm import Session
+from app.db.session import get_db
+from app.models.post import Post
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
-QDRANT_PORT = int(os.getenv("QDRANT_PORT", 6333))
+QDRANT_HOST = settings.QDRANT_HOST
+QDRANT_PORT = settings.QDRANT_PORT
 
 class InferenceResult(BaseModel):
-    job_id: str
+    job_id: int
     unified_vector: list  
     status: str
 
-@router.get("/internal/test-redis")
-async def test_redis():
-    try:
-        # Redis에 ping을 날려 연결 확인
-        pong = await redis_client.ping()
-        return {"redis_status": "connected" if pong else "failed"}
-    except Exception as e:
-        return {"redis_status": "error", "detail": str(e)}
-
 @router.post("/inference-result")
-async def receive_result(result: InferenceResult, x_santa_token: str = Header(None)):
+async def receive_result(
+    result: InferenceResult, 
+    x_santa_token: str = Header(None),
+    db: Session = Depends(get_db) # ✅ DB 세션 주입
+):
 
     if x_santa_token != settings.SANTA_SECRET_TOKEN:
-        logger.warning(f"승인되지 않은 접근 시도! Job ID: {result.job_id}")
+        logger.warning(f"승인되지 않은 접근 시도! Post ID: {result.job_id}")
         raise HTTPException(status_code=403, detail="Unauthorized")
 
-    logger.info(f"[Webhook] 결과 수신 완료! Job ID: {result.job_id}")
+    logger.info(f"[Webhook] 결과 수신: Post ID {result.job_id}")
     
     try:
-        await redis_client.hset(
-            f"job:{result.job_id}", 
-            mapping={
-                "unified_vector": json.dumps(result.unified_vector),
-                "status": "completed"
-            }
+        client = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT)
+        
+        client.upsert(
+            collection_name="santa_images",
+            points=[
+                PointStruct(
+                    id=result.job_id,
+                    vector=result.unified_vector,
+                    payload={
+                        "post_id": result.job_id,
+                        "status": "completed"
+                    }
+                )
+            ]
         )
-        logger.info(f"Job {result.job_id} 상태 업데이트 및 벡터 저장 완료")
+        logger.info(f"✅ Qdrant 저장 완료 (ID: {result.job_id})")
+
+        target_post = db.query(Post).filter(Post.post_id == result.job_id).first()
+        
+        if target_post:
+            target_post.level = 1
+            db.commit()
+            logger.info(f"✅ RDS Level 업데이트 완료 (Post ID: {result.job_id})")
+        else:
+            logger.warning(f"⚠️ RDS에서 해당 게시물을 찾을 수 없음 (ID: {result.job_id})")
+
     except Exception as e:
-        logger.error(f"Redis 저장 중 에러 발생: {e}")
+        logger.error(f"처리 중 에러 발생: {e}")
+        db.rollback() # DB 에러 시 롤백
         raise HTTPException(status_code=500, detail="Internal Server Error")
     
     return {"status": "success"}
