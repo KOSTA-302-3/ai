@@ -7,17 +7,15 @@ from contextlib import asynccontextmanager
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # [시작 시 실행]
-    # 여기에 초기화 함수를 넣어서 서버 켜질 때 DB/Qdrant 세팅을 보장합니다.
     try:
         init_system() 
-        print("✅ 시스템 초기화 완료")
+        print("시스템 초기화 완료")
     except Exception as e:
-        print(f"❌ 시스템 초기화 실패: {e}")
+        print(f"시스템 초기화 실패: {e}")
     
     yield
 
-app = FastAPI(title="Project Santa AI Manager")
+app = FastAPI(title="Project Santa AI Manager", lifespan=lifespan)
 
 # API 경로 등록
 app.include_router(api_router)
