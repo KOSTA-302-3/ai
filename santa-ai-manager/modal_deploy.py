@@ -1,6 +1,5 @@
 import modal
 import os
-import numpy as np
 
 image = (
     modal.Image.debian_slim()
@@ -27,6 +26,7 @@ def run_inference(image_urls: list, content: str, job_id: str, callback_url: str
     from io import BytesIO
     from transformers import AutoModel, AutoProcessor
     from botocore.config import Config
+    import numpy as np
 
     # 모델 가중치 로드
     if not os.path.exists(MODEL_PATH):

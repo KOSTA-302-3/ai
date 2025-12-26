@@ -15,3 +15,7 @@ python-multipart==0.0.9
 
 # === [ Vector DB ] ===
 qdrant-client>=1.7.0
+
+# === [ Database ] ===
+sqlalchemy==2.0.34
+pymysql==1.1.0
