@@ -107,15 +107,15 @@ async def receive_inference_result(
             """)
             conn.execute(stmt, {"lvl": level, "pid": result.job_id})
             
-            # 2. feedbacks 테이블 생성 (AI 평가 기록)
+            # 2. feed_backs 테이블 생성 (AI 평가 기록)
             # (해당 post_id에 대한 피드백이 이미 있으면 무시, 없으면 삽입)
             # user_id는 해당 게시글 작성자(create_user_id)를 가져와야 함
             stmt_feedback = text("""
-                INSERT INTO feedbacks (user_id, post_id, level, created_at)
+                INSERT INTO feed_backs (user_id, post_id, level, created_at)
                 SELECT create_user_id, post_id, :lvl, NOW()
                 FROM posts
                 WHERE post_id = :pid
-                AND NOT EXISTS (SELECT 1 FROM feedbacks WHERE post_id = :pid)
+                AND NOT EXISTS (SELECT 1 FROM feed_backs WHERE post_id = :pid)
             """)
             conn.execute(stmt_feedback, {"lvl": level, "pid": result.job_id})
             
