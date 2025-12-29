@@ -1,4 +1,5 @@
 # ai
+
 ```
 ai
 ├─ .dockerignore
@@ -11,9 +12,10 @@ ai
    │  │  ├─ config.py
    │  │  └─ connections.py
    │  ├─ db
+   │  │  ├─ init_db.py
    │  │  └─ session.py
    │  ├─ main.py
-   │  ├─ model
+   │  ├─ models
    │  │  └─ post.py
    │  ├─ schemas
    │  ├─ services
@@ -23,8 +25,10 @@ ai
    │  └─ __init__.py
    ├─ docker-compose.yml
    ├─ Dockerfile
+   ├─ initial_centroids.json
+   ├─ inject_centroids.py
+   ├─ modal_batch.py
    ├─ modal_deploy.py
    ├─ push_job.py
-   └─ requirements.txt
-
+   └─ requirements
 ```
