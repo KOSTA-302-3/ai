@@ -69,7 +69,7 @@ class CentroidService:
 
     async def process_feedback_job(self, feedback_data: dict):
         post_id = feedback_data.get("post_id")
-        correct_level = feedback_data.get("correct_level")
+        correct_level = feedback_data.get("level")
 
         if not post_id or not correct_level:
             logger.error("잘못된 피드백 데이터입니다.")
