@@ -108,19 +108,27 @@ def inject_centroids():
     # ---------------------------------------------------------
     # 3. [NEW] WandB 초기값 로깅
     # ---------------------------------------------------------
-    print("\nWandB에 초기 Centroid 기록 중...")
+    print("\nWandB에 초기 Centroid 일괄 기록 중...")
     try:
+        # 1. 빈 테이블 생성 (컬럼 정의)
+        table = wandb.Table(columns=["id", "type", "level", "embedding"])
+
+        # 2. 루프 돌면서 데이터 '추가'만 함 (전송 X)
         for level, vector in centroids_data.items():
-            wandb_service.log_point(
-                vector=vector,
-                point_type="centroid",
-                point_id=f"init_centroid_lv{level}", # 초기값임을 표시
-                level=int(level)
+            table.add_data(
+                f"init_centroid_lv{level}", # id
+                "centroid",                 # type
+                int(level),                 # level
+                vector                      # vector
             )
+
+        # 3. 데이터가 꽉 찬 테이블을 "한 번만" 전송
+        # 이렇게 해야 Step 0에 모든 점이 같이 찍힙니다.
+        wandb.log({"santa_vectors": table})
         
-        # 스크립트 방식이므로 로그 전송 완료를 대기하고 종료
+        # 전송 완료 대기
         wandb.finish()
-        print("✅ WandB 로깅 완료!")
+        print(" WandB 로깅 완료! (모든 레벨이 한 화면에 보입니다)")
         
     except Exception as e:
         print(f"WandB 로깅 실패: {e}")

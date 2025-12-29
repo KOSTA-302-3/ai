@@ -70,13 +70,17 @@ class CentroidService:
             # 시각화용 저장이 실패해도 서비스는 멈추지 않도록 로그만 남김
             logger.error(f"Qdrant Centroid 업데이트 실패: {e}")
 
+        batch_items = []
         for level, vector in centroids.items():
-            wandb_service.log_point(
-                vector=vector,
-                point_type="centroid",
-                point_id=f"centroid_lv{level}",
-                level=int(level)
-            )
+            batch_items.append((
+                vector,                 # vector
+                "centroid",             # point_type
+                f"centroid_lv{level}",  # point_id
+                int(level)              # level
+            ))
+            
+        # 한 번에 전송!
+        wandb_service.log_batch(batch_items)
 
     def _normalize(self, vector: List[float]) -> np.ndarray:
         """벡터 정규화 (L2 Norm)"""
