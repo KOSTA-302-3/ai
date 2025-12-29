@@ -45,42 +45,37 @@ class CentroidService:
         
         # 2. Qdrant 저장 (시각화용)
         try:
-            points = []
+            qdrant_points = []
+            wandb_items = []  # WandB용 리스트
+
             for level, vector in centroids.items():
-                points.append(
+                # Qdrant용 데이터 준비
+                qdrant_points.append(
                     models.PointStruct(
                         id=int(level), 
                         vector=vector,
-                        payload={
-                            "level": int(level),
-                            "type": "centroid",
-                            "updated_at": "now" # 필요 시 타임스탬프 추가
-                        }
+                        payload={"level": int(level), "type": "centroid", "updated_at": "now"}
                     )
                 )
+                
+                # [수정됨] WandB용 데이터 수집 (보내지 않고 리스트에 담기만 함)
+                wandb_items.append((
+                    vector,                 # vector
+                    "centroid",             # type
+                    f"centroid_lv{level}",  # id
+                    int(level)              # level
+                ))
             
-            # upsert는 기존 ID가 있으면 덮어씁니다.
-            self.qdrant.upsert(
-                collection_name="santa_centroids",
-                points=points
-            )
-            logger.info("Redis 및 Qdrant(santa_centroids)에 업데이트 완료")
+            # Qdrant 실행
+            self.qdrant.upsert(collection_name="santa_centroids", points=qdrant_points)
+            
+            # [수정됨] WandB 일괄 전송!
+            wandb_service.log_batch(wandb_items)
+            
+            logger.info("Redis, Qdrant, WandB 업데이트 완료")
             
         except Exception as e:
-            # 시각화용 저장이 실패해도 서비스는 멈추지 않도록 로그만 남김
-            logger.error(f"Qdrant Centroid 업데이트 실패: {e}")
-
-        batch_items = []
-        for level, vector in centroids.items():
-            batch_items.append((
-                vector,                 # vector
-                "centroid",             # point_type
-                f"centroid_lv{level}",  # point_id
-                int(level)              # level
-            ))
-            
-        # 한 번에 전송!
-        wandb_service.log_batch(batch_items)
+            logger.error(f"저장 중 에러 발생: {e}")
 
     def _normalize(self, vector: List[float]) -> np.ndarray:
         """벡터 정규화 (L2 Norm)"""
