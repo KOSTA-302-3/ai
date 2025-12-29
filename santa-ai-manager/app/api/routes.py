@@ -13,6 +13,8 @@ from qdrant_client.http import models
 from app.core.config import settings
 from app.db.session import get_db
 
+from app.services.wandb_service import wandb_service
+
 # 로거 설정
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -121,6 +123,13 @@ async def receive_inference_result(
     except Exception as e:
         logger.error(f"데이터 처리 중 에러: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+    wandb_service.log_point(
+        vector=result.unified_vector,
+        point_type="post",
+        point_id=str(result.job_id),
+        level=level # 위에서 계산된 level
+    )
 
     return {"status": "success", "assigned_level": level}
 
