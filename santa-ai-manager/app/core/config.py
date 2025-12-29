@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     REDIS_HOST: str
     REDIS_PORT: int = 6379
     REDIS_QUEUE_NAME: str = "queue:inference"
+    REDIS_FEEDBACK_QUEUE_NAME: str = "queue:feedback"
     REDIS_PASSWORD: str | None = None
     
     # [Qdrant 설정]
