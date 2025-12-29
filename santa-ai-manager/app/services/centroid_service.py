@@ -13,6 +13,8 @@ from app.core.connections import redis_client
 from app.db.session import SessionLocal
 from app.models.post import Post
 
+from app.services.wandb_service import wandb_service
+
 logger = logging.getLogger(__name__)
 
 class CentroidService:
@@ -67,6 +69,14 @@ class CentroidService:
         except Exception as e:
             # 시각화용 저장이 실패해도 서비스는 멈추지 않도록 로그만 남김
             logger.error(f"Qdrant Centroid 업데이트 실패: {e}")
+
+        for level, vector in centroids.items():
+            wandb_service.log_point(
+                vector=vector,
+                point_type="centroid",
+                point_id=f"centroid_lv{level}",
+                level=int(level)
+            )
 
     def _normalize(self, vector: List[float]) -> np.ndarray:
         """벡터 정규화 (L2 Norm)"""

@@ -1,21 +1,19 @@
-# === [ Backend Framework ] ===
 fastapi==0.115.0
 uvicorn[standard]==0.30.6
 pydantic==2.9.2
 pydantic-settings==2.5.2
 python-dotenv==1.0.1
 
-# === [ Communication & Utilities ] ===
 redis==5.0.8
-# 특정 버전을 명시하지 않고 최신 버전을 사용하도록 수정
+
 modal>=0.64.0
 httpx==0.27.2
 aiohttp==3.10.5
 python-multipart==0.0.9
 
-# === [ Vector DB ] ===
 qdrant-client>=1.7.0
 
-# === [ Database ] ===
 sqlalchemy==2.0.34
 pymysql==1.1.0
+
+wandb

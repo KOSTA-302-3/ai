@@ -3,12 +3,15 @@ import redis
 import os
 import sys
 
-# Qdrant 라이브러리 추가
+# Qdrant & WandB 라이브러리
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
+import wandb  # 스크립트 종료 처리를 위해 직접 import
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from app.core.config import settings
+# 방금 만든 wandb_service 가져오기
+from app.services.wandb_service import wandb_service
 
 def inject_centroids():
     print("Centroid 데이터 주입 시작...")
@@ -24,90 +27,103 @@ def inject_centroids():
     print(f"JSON 로드 완료 (총 {len(centroids_data)}개 레벨)")
 
     # ---------------------------------------------------------
-    # 1. Redis 저장 (기존 코드 유지)
+    # 1. Redis 저장
     # ---------------------------------------------------------
     try:
-        # Spring 설정: spring.data.redis.ssl.enabled=true 
-        # -> Python에서는 protocol='rediss' 및 ssl_cert_reqs=None 처리 필요
-        
-        # 비밀번호가 .env에 잘 들어갔는지 확인
         if not settings.REDIS_PASSWORD:
             print("오류: .env 파일에 'REDIS_PASSWORD'가 설정되지 않았습니다!")
             return
 
         redis_url = f"rediss://:{settings.REDIS_PASSWORD}@{settings.REDIS_HOST}:{settings.REDIS_PORT}"
         
-        print(f"Redis 보안 접속 시도 (SSL): {settings.REDIS_HOST}...")
-
-        # ssl_cert_reqs=None: AWS 내부 통신 시 인증서 검증을 건너뛰어 에러 방지
+        # ssl_cert_reqs=None 추가 (AWS ElastiCache 등 호환성)
         r = redis.Redis.from_url(
             redis_url, 
             decode_responses=True, 
             ssl_cert_reqs=None 
         )
         
-        # 연결 테스트
         r.ping()
-        print("Redis 연결 성공! (Auth & SSL OK)")
+        print("Redis 연결 성공!")
 
-        # 데이터 저장
         redis_key = "system:centroids"
         r.set(redis_key, json.dumps(centroids_data))
         print(f"Redis Key '{redis_key}' 저장 완료!")
-        
-        # 검증
-        if r.get(redis_key):
-            print("Redis 데이터 주입 성공!")
-        else:
-            print("Redis 저장 실패 (데이터가 비어있음)")
 
     except Exception as e:
         print(f"Redis 처리 중 에러: {e}")
-        return # Redis 실패 시 중단하려면 return 유지, 아니면 pass
+        return
 
     # ---------------------------------------------------------
-    # 2. Qdrant 저장 (신규 추가됨)
+    # 2. Qdrant 저장 (시각화용 컬렉션)
     # ---------------------------------------------------------
-    print("\nQdrant 데이터 주입 시작 (시각화용)...")
+    print("\nQdrant 데이터 주입 시작...")
     try:
-        # Qdrant 연결
         q_client = QdrantClient(host=settings.QDRANT_HOST, port=settings.QDRANT_PORT)
+        
+        # A. santa_centroids (순수 Centroid 저장소)
         collection_name = "santa_centroids"
-        vector_size = 1152  # SigLIP 모델 차원
-
-        # 컬렉션 생성 (이미 있으면 다시 만듦)
-        q_client.recreate_collection(
+        
+        if q_client.collection_exists(collection_name):
+            q_client.delete_collection(collection_name)
+            
+        q_client.create_collection(
             collection_name=collection_name,
             vectors_config=models.VectorParams(
-                size=vector_size,
+                size=1152,
                 distance=models.Distance.COSINE
             )
         )
 
-        # 데이터 변환 (Dict -> PointStruct)
         points = []
         for level, vector in centroids_data.items():
             points.append(
                 models.PointStruct(
-                    id=int(level),  # ID는 레벨 숫자(0~5) 그대로 사용
+                    id=int(level),
                     vector=vector,
-                    payload={
-                        "level": int(level),
-                        "type": "centroid",
-                        "label": f"Level {level}"
-                    }
+                    payload={"level": int(level), "type": "centroid", "label": f"Level {level}"}
                 )
             )
 
-        # 업로드
-        q_client.upsert(
-            collection_name=collection_name,
-            points=points
-        )
-        print(f"Qdrant 컬렉션 '{collection_name}'에 Centroid {len(points)}개 저장 완료!")
+        q_client.upsert(collection_name=collection_name, points=points)
+        print(f"Qdrant 컬렉션 '{collection_name}' 저장 완료!")
+
+        # B. santa_images (시각화 꼼수용 병합)
+        if q_client.collection_exists("santa_images"):
+            image_points = []
+            for level, vector in centroids_data.items():
+                image_points.append(
+                    models.PointStruct(
+                        id=100000000 + int(level), # ID 충돌 방지
+                        vector=vector,
+                        payload={"level": int(level), "type": "centroid", "label": f"CENTER_LV_{level}"}
+                    )
+                )
+            q_client.upsert(collection_name="santa_images", points=image_points)
+            print(f"Qdrant 컬렉션 'santa_images'에 병합 완료!")
 
     except Exception as e:
         print(f"Qdrant 처리 중 에러: {e}")
+
+    # ---------------------------------------------------------
+    # 3. [NEW] WandB 초기값 로깅
+    # ---------------------------------------------------------
+    print("\nWandB에 초기 Centroid 기록 중...")
+    try:
+        for level, vector in centroids_data.items():
+            wandb_service.log_point(
+                vector=vector,
+                point_type="centroid",
+                point_id=f"init_centroid_lv{level}", # 초기값임을 표시
+                level=int(level)
+            )
+        
+        # 스크립트 방식이므로 로그 전송 완료를 대기하고 종료
+        wandb.finish()
+        print("✅ WandB 로깅 완료!")
+        
+    except Exception as e:
+        print(f"WandB 로깅 실패: {e}")
 
     print("\n모든 작업 완료.")
 
