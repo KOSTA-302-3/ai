@@ -3,6 +3,10 @@ import redis
 import os
 import sys
 
+# Qdrant 라이브러리 추가
+from qdrant_client import QdrantClient
+from qdrant_client.http import models
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from app.core.config import settings
 
@@ -20,7 +24,7 @@ def inject_centroids():
     print(f"JSON 로드 완료 (총 {len(centroids_data)}개 레벨)")
 
     # ---------------------------------------------------------
-    # SSL + Password 접속 설정
+    # 1. Redis 저장 (기존 코드 유지)
     # ---------------------------------------------------------
     try:
         # Spring 설정: spring.data.redis.ssl.enabled=true 
@@ -46,24 +50,66 @@ def inject_centroids():
         r.ping()
         print("Redis 연결 성공! (Auth & SSL OK)")
 
-    except Exception as e:
-        print(f"Redis 연결 실패: {e}")
-        return
-
-    # 3. 데이터 저장
-    redis_key = "system:centroids"
-    try:
+        # 데이터 저장
+        redis_key = "system:centroids"
         r.set(redis_key, json.dumps(centroids_data))
         print(f"Redis Key '{redis_key}' 저장 완료!")
         
         # 검증
         if r.get(redis_key):
-            print("데이터 주입 성공! 모든 준비 완료.")
+            print("Redis 데이터 주입 성공!")
         else:
-            print("저장 실패 (데이터가 비어있음)")
+            print("Redis 저장 실패 (데이터가 비어있음)")
 
     except Exception as e:
-        print(f"데이터 저장 중 에러: {e}")
+        print(f"Redis 처리 중 에러: {e}")
+        return # Redis 실패 시 중단하려면 return 유지, 아니면 pass
+
+    # ---------------------------------------------------------
+    # 2. Qdrant 저장 (신규 추가됨)
+    # ---------------------------------------------------------
+    print("\nQdrant 데이터 주입 시작 (시각화용)...")
+    try:
+        # Qdrant 연결
+        q_client = QdrantClient(host=settings.QDRANT_HOST, port=settings.QDRANT_PORT)
+        collection_name = "santa_centroids"
+        vector_size = 1152  # SigLIP 모델 차원
+
+        # 컬렉션 생성 (이미 있으면 다시 만듦)
+        q_client.recreate_collection(
+            collection_name=collection_name,
+            vectors_config=models.VectorParams(
+                size=vector_size,
+                distance=models.Distance.COSINE
+            )
+        )
+
+        # 데이터 변환 (Dict -> PointStruct)
+        points = []
+        for level, vector in centroids_data.items():
+            points.append(
+                models.PointStruct(
+                    id=int(level),  # ID는 레벨 숫자(0~5) 그대로 사용
+                    vector=vector,
+                    payload={
+                        "level": int(level),
+                        "type": "centroid",
+                        "label": f"Level {level}"
+                    }
+                )
+            )
+
+        # 업로드
+        q_client.upsert(
+            collection_name=collection_name,
+            points=points
+        )
+        print(f"Qdrant 컬렉션 '{collection_name}'에 Centroid {len(points)}개 저장 완료!")
+
+    except Exception as e:
+        print(f"Qdrant 처리 중 에러: {e}")
+
+    print("\n모든 작업 완료.")
 
 if __name__ == "__main__":
     inject_centroids()

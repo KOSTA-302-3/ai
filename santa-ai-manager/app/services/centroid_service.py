@@ -6,6 +6,7 @@ from typing import List, Dict, Optional
 from sqlalchemy.orm import Session
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
+from qdrant_client.http import models
 
 from app.core.config import settings
 from app.core.connections import redis_client
@@ -35,9 +36,37 @@ class CentroidService:
         return json.loads(data)
 
     async def save_centroids(self, centroids: Dict[str, List[float]]):
-        """Redis에 변경된 Centroid 정보를 저장합니다."""
+        """Redis와 Qdrant에 변경된 Centroid 정보를 저장합니다."""
+        
+        # 1. Redis 저장
         await redis_client.set(self.REDIS_KEY, json.dumps(centroids))
-        logger.info("Redis에 Centroids 업데이트 완료")
+        
+        # 2. Qdrant 저장 (시각화용)
+        try:
+            points = []
+            for level, vector in centroids.items():
+                points.append(
+                    models.PointStruct(
+                        id=int(level), 
+                        vector=vector,
+                        payload={
+                            "level": int(level),
+                            "type": "centroid",
+                            "updated_at": "now" # 필요 시 타임스탬프 추가
+                        }
+                    )
+                )
+            
+            # upsert는 기존 ID가 있으면 덮어씁니다.
+            self.qdrant.upsert(
+                collection_name="santa_centroids",
+                points=points
+            )
+            logger.info("Redis 및 Qdrant(santa_centroids)에 업데이트 완료")
+            
+        except Exception as e:
+            # 시각화용 저장이 실패해도 서비스는 멈추지 않도록 로그만 남김
+            logger.error(f"Qdrant Centroid 업데이트 실패: {e}")
 
     def _normalize(self, vector: List[float]) -> np.ndarray:
         """벡터 정규화 (L2 Norm)"""
