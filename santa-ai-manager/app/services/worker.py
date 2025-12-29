@@ -42,7 +42,7 @@ async def watch_feedback_queue():
             job = await redis_client.blpop(settings.REDIS_FEEDBACK_QUEUE_NAME, timeout=1)
             if job:
                 feedback_info = json.loads(job[1])
-                logger.info(f"[Feedback] 피드백 수신: Post {feedback_info.get('post_id')} -> Level {feedback_info.get('correct_level')}")
+                logger.info(f"[Feedback] 피드백 수신: Post {feedback_info.get('job_id')} -> Level {feedback_info.get('level')}")
                 
                 await centroid_service.process_feedback_job(feedback_info)
                 

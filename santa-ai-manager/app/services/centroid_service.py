@@ -68,7 +68,7 @@ class CentroidService:
         return best_level
 
     async def process_feedback_job(self, feedback_data: dict):
-        post_id = feedback_data.get("post_id")
+        post_id = feedback_data.get("job_id")
         correct_level = feedback_data.get("level")
 
         if not post_id or not correct_level:
