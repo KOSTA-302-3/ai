@@ -25,33 +25,14 @@ class WandBService:
             except Exception as e:
                 logger.error(f"WandB 초기화 실패: {e}")
 
-    def log_point(self, vector: list, point_type: str, point_id: str, level: int):
-        """단건 로깅 (routes.py용)"""
-        try:
-            self._ensure_init()
-            if not vector: return
-
-            table = wandb.Table(columns=["id", "type", "level", "embedding"])
-            table.add_data(str(point_id), point_type, level, vector)
-            wandb.log({"santa_vectors": table})
-            
-        except Exception as e:
-            logger.error(f"WandB 로깅 실패: {e}")
-
-    # 👇 [신규 추가] 여러 건을 한 번에 로깅하는 함수
     def log_batch(self, items: list):
-        """
-        items: [(vector, point_type, point_id, level), ...] 형태의 리스트
-        """
+        """Centroid 업데이트용 (기존 유지)"""
         try:
             self._ensure_init()
             if not items: return
 
             table = wandb.Table(columns=["id", "type", "level", "embedding"])
-            
             for item in items:
-                # item unpacking: (vector, type, id, level) 순서 주의
-                # 위 add_data 순서: id, type, level, vector
                 vec, p_type, p_id, lvl = item
                 table.add_data(str(p_id), p_type, lvl, vec)
 
@@ -60,5 +41,38 @@ class WandBService:
 
         except Exception as e:
             logger.error(f"WandB Batch 로깅 실패: {e}")
+
+    # 👇 [신규] Post 1개와 현재 Centroid들을 묶어서 로깅
+    def log_inference(self, post_vector: list, post_id: str, post_level: int, centroids: dict):
+        try:
+            self._ensure_init()
+            
+            # 테이블 컬럼 정의
+            table = wandb.Table(columns=["id", "type", "level", "embedding"])
+
+            # 1. 주인공 (Post) 추가
+            table.add_data(
+                str(post_id), 
+                "post", 
+                post_level, 
+                post_vector
+            )
+
+            # 2. 조연 (Current Centroids) 함께 추가
+            # 이걸 같이 넣어줘야 화면에서 비교가 됩니다.
+            if centroids:
+                for level, vector in centroids.items():
+                    table.add_data(
+                        f"curr_centroid_lv{level}", # ID로 현재 상태임을 표시
+                        "current_centroid",         # Type을 다르게 주어 모양 구분 가능
+                        int(level),
+                        vector
+                    )
+
+            # 전송
+            wandb.log({"santa_vectors": table})
+            
+        except Exception as e:
+            logger.error(f"WandB Inference 로깅 실패: {e}")
 
 wandb_service = WandBService()

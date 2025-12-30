@@ -21,9 +21,9 @@ class CentroidService:
     REDIS_KEY = "system:centroids"
     
     # 하이퍼파라미터 (기존 설정 유지)
-    LEARNING_RATE = 0.02   
-    REPULSION_RATE = 0.01  
-    SIMILARITY_THRESHOLD = 0.95
+    LEARNING_RATE = 0.01   
+    REPULSION_RATE = 0.02  
+    SIMILARITY_THRESHOLD = 0.90
 
     def __init__(self):
         # Qdrant 클라이언트는 동기 방식으로 사용 (데이터 처리를 위해)

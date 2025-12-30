@@ -96,6 +96,11 @@ async def receive_inference_result(
             # Qdrant 실패해도 RDS 업데이트는 시도하도록 continue
 
         # B. 레벨 계산 (Centroid와 비교)
+        centroids_data = redis_client.get("system:centroids")
+        centroids = {}
+        if centroids_data:
+            centroids = json.loads(centroids_data)
+
         level = calculate_level(result.unified_vector)
         logger.info(f"📏 계산된 레벨: {level}")
 
@@ -120,16 +125,17 @@ async def receive_inference_result(
             points=[result.job_id]
         )
 
+        wandb_service.log_point(
+            vector=result.unified_vector,
+            point_type="post",
+            point_id=str(result.job_id),
+            level=level # 위에서 계산된 level
+        )
+        
     except Exception as e:
         logger.error(f"데이터 처리 중 에러: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-    wandb_service.log_point(
-        vector=result.unified_vector,
-        point_type="post",
-        point_id=str(result.job_id),
-        level=level # 위에서 계산된 level
-    )
 
     return {"status": "success", "assigned_level": level}
 
